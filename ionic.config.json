@@ -1,0 +1,7 @@
+{
+  "name": "Enchentes-e-Logistica",
+  "integrations": {
+    "capacitor": {}
+  },
+  "type": "angular"
+}
