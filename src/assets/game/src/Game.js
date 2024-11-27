@@ -3,8 +3,12 @@ let triggerHapticFeedback = function (style = 'Medium') {
     try {
         if (typeof window.Capacitor !== 'undefined' && window.Capacitor.Plugins && window.Capacitor.Plugins.Haptics) {
             const { Haptics, ImpactStyle } = window.Capacitor.Plugins;
+
+            // Garante que o estilo solicitado exista no objeto ImpactStyle
+            const hapticStyle = ImpactStyle ? ImpactStyle[style] || ImpactStyle.Medium : 'Medium';
+
             Haptics.impact({
-                style: ImpactStyle[style] || ImpactStyle.Medium
+                style: hapticStyle
             });
         } else {
             console.log('Haptic feedback não disponível.');
@@ -23,7 +27,7 @@ Ball.Game.prototype = {
         this.setupUI();
         this.setupPhysics();
         this.setupAudio();
-        this.setupAccelerometer();
+        this.setupGyroscope();
 
         // Configuração do Timer
         this.startTime = this.time.now; // Armazena o tempo inicial
@@ -38,7 +42,7 @@ Ball.Game.prototype = {
         this.totalTimer = 0;
         this.level = 1;
         this.maxLevels = 5;
-        this.movementForce = 10;
+        this.movementForce = 5; // Ajuste da força de movimento
         this.ballStartPos = { x: Ball._WIDTH * 0.5, y: 450 };
 
         // Criação da bola
@@ -103,39 +107,55 @@ Ball.Game.prototype = {
         this.bounceSound = this.game.add.audio('audio-bounce');
     },
 
-    setupAccelerometer: function () {
-        if (typeof DeviceMotionEvent !== 'undefined' && typeof DeviceMotionEvent.requestPermission === 'function') {
-            DeviceMotionEvent.requestPermission()
+    setupGyroscope: function () {
+        const self = this;
+
+        // Variáveis para armazenar a posição inicial do celular
+        this.initialGamma = null;
+        this.initialBeta = null;
+
+        if (typeof DeviceOrientationEvent !== 'undefined' && typeof DeviceOrientationEvent.requestPermission === 'function') {
+            DeviceOrientationEvent.requestPermission()
                 .then(permissionState => {
                     if (permissionState === 'granted') {
-                        this.configureAccelerometer();
+                        self.configureGyroscope();
                     } else {
-                        console.log('Permissão negada para o uso do acelerômetro.');
+                        console.log('Permissão negada para o uso do giroscópio.');
                     }
                 })
                 .catch(console.error);
         } else {
-            this.configureAccelerometer(); // Acelerômetro disponível sem permissão
+            this.configureGyroscope(); // Giroscópio disponível sem permissão
         }
     },
 
-    configureAccelerometer: function () {
+    configureGyroscope: function () {
         const self = this;
-        const sensitivity = 0.5; // Reduz a sensibilidade
+        const sensitivity = 0.2; // Ajuste de sensibilidade do giroscópio
 
-        if (typeof window.DeviceMotionEvent !== 'undefined') {
-            window.addEventListener('devicemotion', function (event) {
-                const x = event.accelerationIncludingGravity.x;
-                const y = event.accelerationIncludingGravity.y;
+        if (typeof window.DeviceOrientationEvent !== 'undefined') {
+            window.addEventListener('deviceorientation', function (event) {
+                const gamma = event.gamma; // Inclinação esquerda-direita (X)
+                const beta = event.beta; // Inclinação frente-trás (Y)
 
-                if (x && y) {
-                    // Ajuste dos eixos e sensibilidade
-                    self.ball.body.velocity.x += -x * self.movementForce * sensitivity;
-                    self.ball.body.velocity.y += y * self.movementForce * sensitivity;
+                // Configura a posição inicial do celular
+                if (self.initialGamma === null || self.initialBeta === null) {
+                    self.initialGamma = gamma;
+                    self.initialBeta = beta;
+                }
+
+                // Calcula o deslocamento relativo à posição inicial
+                const deltaX = gamma - self.initialGamma;
+                const deltaY = beta - self.initialBeta;
+
+                // Atualiza a velocidade da bola com base no deslocamento
+                if (deltaX && deltaY) {
+                    self.ball.body.velocity.x += deltaX * self.movementForce * sensitivity;
+                    self.ball.body.velocity.y += deltaY * self.movementForce * sensitivity;
                 }
             });
         } else {
-            console.log('Acelerômetro não disponível.');
+            console.log('Giroscópio não disponível.');
         }
     },
 
@@ -176,17 +196,18 @@ Ball.Game.prototype = {
         // Calcula o tempo decorrido
         const elapsedTime = Math.floor((this.time.now - this.startTime) / 1000);
 
-        // Atualiza o texto do timer apenas se o tempo mudar
+        // Atualiza o texto do temporizador apenas se o tempo mudar
         if (elapsedTime !== this.timer) {
             this.timer = elapsedTime;
             this.timerText.setText("Time: " + this.timer);
             this.totalTimeText.setText("Total time: " + (this.totalTimer + this.timer));
         }
 
-        // Limitação de velocidade
-        this.ball.body.velocity.x = Phaser.Math.clamp(this.ball.body.velocity.x, -200, 200);
-        this.ball.body.velocity.y = Phaser.Math.clamp(this.ball.body.velocity.y, -200, 200);
+        // Limitação de velocidade da bola
+        this.ball.body.velocity.x = Phaser.Math.clamp(this.ball.body.velocity.x, -50, 50);
+        this.ball.body.velocity.y = Phaser.Math.clamp(this.ball.body.velocity.y, -50, 50);
 
+        // Detecta colisões
         this.physics.arcade.collide(this.ball, this.borderGroup, this.wallCollision, null, this);
         this.physics.arcade.collide(this.ball, this.levels[this.level - 1], this.wallCollision, null, this);
         this.physics.arcade.overlap(this.ball, this.hole, this.finishLevel, null, this);
@@ -215,22 +236,30 @@ Ball.Game.prototype = {
 
     finishLevel: function () {
         if (this.level >= this.maxLevels) {
+            // Fim do jogo
             this.totalTimer += this.timer;
             alert('Congratulations, game completed!\nTotal time of play: ' + this.totalTimer + ' seconds!');
             this.game.state.start('MainMenu');
         } else {
+            // Conclui o nível atual e reinicia para o próximo
             alert('Congratulations, level ' + this.level + ' completed!');
-            this.totalTimer += this.timer;
-            this.timer = 0;
+
+            this.totalTimer += this.timer; // Acumula o tempo total
+            this.timer = 0; // Reinicia o temporizador para o próximo nível
+            this.startTime = this.time.now; // Reinicia o tempo inicial
+
             this.level++;
             this.timerText.setText("Time: " + this.timer);
             this.totalTimeText.setText("Total time: " + this.totalTimer);
             this.levelText.setText("Level: " + this.level + " / " + this.maxLevels);
+
+            // Reseta a posição e velocidade da bola
             this.ball.body.x = this.ballStartPos.x;
             this.ball.body.y = this.ballStartPos.y;
             this.ball.body.velocity.x = 0;
             this.ball.body.velocity.y = 0;
-            this.showLevel();
+
+            this.showLevel(); // Exibe o próximo nível
         }
     }
 };
