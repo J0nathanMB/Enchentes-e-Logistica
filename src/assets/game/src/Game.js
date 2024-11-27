@@ -1,10 +1,16 @@
 // Verificação do Capacitor para funcionalidades nativas
-let triggerHapticFeedback = function () {
-    if (typeof window.Capacitor !== 'undefined' && window.Capacitor.Plugins && window.Capacitor.Plugins.Haptics) {
-        const { Haptics, ImpactStyle } = window.Capacitor.Plugins;
-        Haptics.impact({ style: ImpactStyle.Medium });
-    } else {
-        console.log('Haptic feedback não disponível no navegador.');
+let triggerHapticFeedback = function (style = 'Medium') {
+    try {
+        if (typeof window.Capacitor !== 'undefined' && window.Capacitor.Plugins && window.Capacitor.Plugins.Haptics) {
+            const { Haptics, ImpactStyle } = window.Capacitor.Plugins;
+            Haptics.impact({
+                style: ImpactStyle[style] || ImpactStyle.Medium
+            });
+        } else {
+            console.log('Haptic feedback não disponível.');
+        }
+    } catch (error) {
+        console.error('Erro ao executar o Haptic Feedback:', error);
     }
 };
 
@@ -18,13 +24,17 @@ Ball.Game.prototype = {
         this.setupPhysics();
         this.setupAudio();
         this.setupAccelerometer();
+
+        // Configuração do Timer
+        this.startTime = this.time.now; // Armazena o tempo inicial
+        this.timer = 0; // Inicializa o contador de tempo
+        this.collisionCooldown = false; // Controle para colisões frequentes
     },
 
     setupGame: function () {
         // Configuração inicial
         this.add.sprite(0, 0, 'screen-bg');
         this.add.sprite(0, 0, 'panel');
-        this.timer = 0;
         this.totalTimer = 0;
         this.level = 1;
         this.maxLevels = 5;
@@ -111,6 +121,7 @@ Ball.Game.prototype = {
 
     configureAccelerometer: function () {
         const self = this;
+        const sensitivity = 0.5; // Reduz a sensibilidade
 
         if (typeof window.DeviceMotionEvent !== 'undefined') {
             window.addEventListener('devicemotion', function (event) {
@@ -118,8 +129,9 @@ Ball.Game.prototype = {
                 const y = event.accelerationIncludingGravity.y;
 
                 if (x && y) {
-                    self.ball.body.velocity.x += x * self.movementForce;
-                    self.ball.body.velocity.y -= y * self.movementForce;
+                    // Ajuste dos eixos e sensibilidade
+                    self.ball.body.velocity.x += -x * self.movementForce * sensitivity;
+                    self.ball.body.velocity.y += y * self.movementForce * sensitivity;
                 }
             });
         } else {
@@ -160,38 +172,15 @@ Ball.Game.prototype = {
         this.levels[lvl - 1].visible = true;
     },
 
-    updateCounter: function () {
-        this.timer++;
-        this.timerText.setText("Time: " + this.timer);
-        this.totalTimeText.setText("Total time: " + (this.totalTimer + this.timer));
-    },
-
-    managePause: function () {
-        this.game.paused = true;
-        const pausedText = this.add.text(Ball._WIDTH * 0.5, 250, "Game paused,\ntap anywhere to continue.", this.fontMessage);
-        pausedText.anchor.set(0.5);
-        this.input.onDown.add(() => {
-            pausedText.destroy();
-            this.game.paused = false;
-        });
-    },
-
-    manageAudio: function () {
-        this.audioStatus = !this.audioStatus;
-        this.audioButton.animations.play(this.audioStatus);
-    },
-
     update: function () {
-        // Controles de teclado (fallback)
-        if (this.keys.left.isDown) {
-            this.ball.body.velocity.x -= this.movementForce;
-        } else if (this.keys.right.isDown) {
-            this.ball.body.velocity.x += this.movementForce;
-        }
-        if (this.keys.up.isDown) {
-            this.ball.body.velocity.y -= this.movementForce;
-        } else if (this.keys.down.isDown) {
-            this.ball.body.velocity.y += this.movementForce;
+        // Calcula o tempo decorrido
+        const elapsedTime = Math.floor((this.time.now - this.startTime) / 1000);
+
+        // Atualiza o texto do timer apenas se o tempo mudar
+        if (elapsedTime !== this.timer) {
+            this.timer = elapsedTime;
+            this.timerText.setText("Time: " + this.timer);
+            this.totalTimeText.setText("Total time: " + (this.totalTimer + this.timer));
         }
 
         // Limitação de velocidade
@@ -204,10 +193,24 @@ Ball.Game.prototype = {
     },
 
     wallCollision: function () {
-        if (this.audioStatus) {
-            this.bounceSound.play();
+        if (this.collisionCooldown) return; // Ignora se em cooldown
+
+        this.collisionCooldown = true; // Ativa cooldown para colisões
+        setTimeout(() => {
+            this.collisionCooldown = false; // Libera após 100ms
+        }, 100);
+
+        try {
+            if (this.audioStatus) {
+                if (this.bounceSound && !this.bounceSound.isPlaying) {
+                    this.bounceSound.play();
+                }
+            }
+
+            triggerHapticFeedback('Heavy');
+        } catch (error) {
+            console.error('Erro em wallCollision:', error);
         }
-        triggerHapticFeedback('Heavy');
     },
 
     finishLevel: function () {
