@@ -1,9 +1,10 @@
 import type { CapacitorConfig } from '@capacitor/cli';
 
 const config: CapacitorConfig = {
-  appId: 'io.ionic.starter',
-  appName: 'Enchentes-e-Logistica',
+  appId: 'com.enchenteselogistica.app', // Novo App ID exclusivo
+  appName: 'Enchentes e Logística', // Nome do aplicativo
   webDir: 'www',
+  bundledWebRuntime: false,
   server: {
     allowNavigation: ["*"], // Permite navegação em todas as origens
   },
