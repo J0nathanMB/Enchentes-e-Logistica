@@ -104,6 +104,22 @@ Ball.Game.prototype = {
         this.audioStatus = true;
         this.bounceSound = this.game.add.audio('audio-bounce');
     },
+    managePause: function () {
+        this.game.paused = true;
+        const pausedText = this.add.text(Ball._WIDTH * 0.5, Ball._HEIGHT * 0.5, "Game paused,\ntap anywhere to continue.", this.fontMessage);
+        pausedText.anchor.set(0.5);
+        this.input.onDown.add(function () {
+            pausedText.destroy();
+            this.game.paused = false;
+        }, this);
+    },
+    manageAudio: function () {
+        this.audioStatus = !this.audioStatus;
+        this.audioButton.animations.play(this.audioStatus);
+        if (!this.audioStatus) {
+            this.bounceSound.stop(); // Para o som se estiver tocando
+        }
+    },
 
     setupGyroscope: function () {
         const self = this;
