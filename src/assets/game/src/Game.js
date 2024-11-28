@@ -4,14 +4,12 @@ let triggerHapticFeedback = function (style = 'Medium') {
         if (typeof window.Capacitor !== 'undefined' && window.Capacitor.Plugins && window.Capacitor.Plugins.Haptics) {
             const { Haptics, ImpactStyle } = window.Capacitor.Plugins;
 
-            // Garante que o estilo solicitado exista no objeto ImpactStyle
-            const hapticStyle = ImpactStyle ? ImpactStyle[style] || ImpactStyle.Medium : 'Medium';
-
-            Haptics.impact({
-                style: hapticStyle
-            });
+            const hapticStyle = ImpactStyle && ImpactStyle[style] ? ImpactStyle[style] : 'Medium';
+            Haptics.impact({ style: hapticStyle })
+                .then(() => console.log('Haptics executado com sucesso.'))
+                .catch(err => console.error('Erro ao executar o Haptics:', err));
         } else {
-            console.log('Haptic feedback não disponível.');
+            console.log('Haptics não disponível.');
         }
     } catch (error) {
         console.error('Erro ao executar o Haptic Feedback:', error);
@@ -214,21 +212,19 @@ Ball.Game.prototype = {
     },
 
     wallCollision: function () {
-        if (this.collisionCooldown) return; // Ignora se em cooldown
+        if (this.collisionCooldown) return;
 
-        this.collisionCooldown = true; // Ativa cooldown para colisões
+        this.collisionCooldown = true;
         setTimeout(() => {
-            this.collisionCooldown = false; // Libera após 100ms
+            this.collisionCooldown = false;
         }, 100);
 
         try {
-            if (this.audioStatus) {
-                if (this.bounceSound && !this.bounceSound.isPlaying) {
-                    this.bounceSound.play();
-                }
+            if (this.audioStatus && this.bounceSound && !this.bounceSound.isPlaying) {
+                this.bounceSound.play();
             }
 
-            triggerHapticFeedback('Heavy');
+            triggerHapticFeedback('Heavy'); // Garante estilo de impacto
         } catch (error) {
             console.error('Erro em wallCollision:', error);
         }
