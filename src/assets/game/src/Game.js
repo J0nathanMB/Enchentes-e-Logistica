@@ -241,6 +241,8 @@ Ball.Game.prototype = {
             }
 
             triggerHapticFeedback('Heavy'); // Garante estilo de impacto
+            // Incrementa o tempo em 0.5 segundos ao colidir
+            this.startTime -= 500; // Subtrai 500ms do tempo inicial para adicionar 0.5s ao tempo decorrido
         } catch (error) {
             console.error('Erro em wallCollision:', error);
         }
@@ -265,7 +267,7 @@ Ball.Game.prototype = {
             this.totalTimeText.setText("Total time: " + this.totalTimer);
             this.levelText.setText("Level: " + this.level + " / " + this.maxLevels);
 
-            // Reseta a posição e velocidade da bola
+            // Reseta a posição e velocidade
             this.ball.body.x = this.ballStartPos.x;
             this.ball.body.y = this.ballStartPos.y;
             this.ball.body.velocity.x = 0;
