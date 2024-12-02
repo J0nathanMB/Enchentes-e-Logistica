@@ -226,6 +226,15 @@ Ball.Game.prototype = {
         this.physics.arcade.collide(this.ball, this.levels[this.level - 1], this.wallCollision, null, this);
         this.physics.arcade.overlap(this.ball, this.hole, this.finishLevel, null, this);
     },
+    blinkTimer: function () {
+        const originalStyle = this.timerText.style.fill; // Armazena a cor original do timer
+        this.timerText.setStyle({ fill: '#ff0000' }); // Define o timer para vermelho
+
+        // Restaura o estilo original após 500ms
+        this.time.events.add(Phaser.Timer.HALF, () => {
+            this.timerText.setStyle({ fill: originalStyle });
+        });
+    },
 
     wallCollision: function () {
         if (this.collisionCooldown) return;
@@ -243,6 +252,8 @@ Ball.Game.prototype = {
             triggerHapticFeedback('Heavy'); // Garante estilo de impacto
             // Incrementa o tempo em 0.5 segundos ao colidir
             this.startTime -= 500; // Subtrai 500ms do tempo inicial para adicionar 0.5s ao tempo decorrido
+            // Faz o timer piscar em vermelho
+            this.blinkTimer();
         } catch (error) {
             console.error('Erro em wallCollision:', error);
         }
