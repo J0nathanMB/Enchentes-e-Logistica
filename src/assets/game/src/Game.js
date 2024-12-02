@@ -227,12 +227,17 @@ Ball.Game.prototype = {
         this.physics.arcade.overlap(this.ball, this.hole, this.finishLevel, null, this);
     },
     blinkTimer: function () {
+        if (this.isBlinking) return; // Evita múltiplas chamadas simultâneas
+
+        this.isBlinking = true; // Marca que o timer está piscando
+
         const originalStyle = this.timerText.style.fill; // Armazena a cor original do timer
         this.timerText.setStyle({ fill: '#ff0000' }); // Define o timer para vermelho
 
-        // Restaura o estilo original após 500ms
-        this.time.events.add(Phaser.Timer.HALF, () => {
+        // Restaura o estilo original após 0,1 segundos
+        this.time.events.add(Phaser.Timer.QUARTER, () => {
             this.timerText.setStyle({ fill: originalStyle });
+            this.isBlinking = false; // Libera o estado de piscando
         });
     },
 
