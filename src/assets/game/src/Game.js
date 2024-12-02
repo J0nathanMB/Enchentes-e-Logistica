@@ -43,14 +43,14 @@ Ball.Game.prototype = {
         this.movementForce = 5; // Ajuste da força de movimento
         this.ballStartPos = { x: Ball._WIDTH * 0.5, y: 450 };
 
-        // Criação da bola
+        // Criação do caminhão
         this.ball = this.add.sprite(this.ballStartPos.x, this.ballStartPos.y, 'ball');
         this.ball.anchor.set(0.5);
         this.physics.enable(this.ball, Phaser.Physics.ARCADE);
         this.ball.body.setSize(18, 18);
         this.ball.body.bounce.set(0.3, 0.3);
 
-        // Configuração do buraco
+        // Configuração da chagada
         this.hole = this.add.sprite(Ball._WIDTH * 0.5, 90, 'hole');
         this.physics.enable(this.hole, Phaser.Physics.ARCADE);
         this.hole.anchor.set(0.5);
